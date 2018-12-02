@@ -125,7 +125,7 @@ model = SmoothHinge(
     mini_batch=False,
     train_dir='output',
     log_dir='log',
-    model_name='smooth_hinge_17_t-%s' % temp)
+    model_name='smooth_hinge_mnist_17_t-%s' % temp)
 
 # model.train()
 # model.load_checkpoint(iter_to_load=0)
@@ -178,7 +178,7 @@ for counter, temp in enumerate(temps):
         mini_batch=False,
         train_dir='output',
         log_dir='log',
-        model_name='smooth_hinge_17_t-%s' % temp)
+        model_name='smooth_hinge_mnist_t-%s' % temp)
   
     if temp == 0:
         model.load_checkpoint(iter_to_load=0)

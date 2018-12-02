@@ -51,7 +51,7 @@ def get_wrong_flags(model, data, label):
 
 def plot_infuence(gt, pred, train_sample_idx):
     plt.figure()
-    plt.plot(gt, pred)
+    plt.plot(gt, pred, 'b.')
     plt.title("Influence of sample {} on subset".format(train_sample_idx))
     plt.savefig("figures/adult_trainsample{}_influence.png".format(train_sample_idx))
 
@@ -100,7 +100,7 @@ model = SmoothHinge(
     mini_batch=False,
     train_dir='output',
     log_dir='log',
-    model_name='smooth_hinge_17_t-%s' % temp)
+    model_name='smooth_hinge_adult_17_t-%s' % temp)
 
 # model.train()
 # model.load_checkpoint(iter_to_load=0)
@@ -152,7 +152,7 @@ for counter, temp in enumerate(temps):
         mini_batch=False,
         train_dir='output',
         log_dir='log',
-        model_name='smooth_hinge_17_t-%s' % temp)
+        model_name='smooth_hinge_adult_17_t-%s' % temp)
   
     if temp == 0:
         model.load_checkpoint(iter_to_load=0)
