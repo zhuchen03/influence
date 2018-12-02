@@ -55,7 +55,7 @@ actual_loss_diffs, predicted_loss_diffs_cg, indices_to_remove = experiments.test
     iter_to_load=0,
     force_refresh=False,
     num_to_remove=500,
-    remove_type='maxinf',
+    remove_type= 'random',  #'maxinf',
     random_seed=0)
 
 

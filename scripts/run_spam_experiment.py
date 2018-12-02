@@ -22,24 +22,24 @@ import tensorflow as tf
 from influence.dataset import DataSet
 from tensorflow.contrib.learn.python.learn.datasets import base
 
-def load_adult_dataset():
+# def load_adult_dataset():
 
-    train_set = np.load('/scratch0/GoGradients/data/adult/train.npy')
-    test_set = np.load('/scratch0/GoGradients/data/adult/test.npy')
+#     train_set = np.load('/scratch0/GoGradients/data/adult/train.npy')
+#     test_set = np.load('/scratch0/GoGradients/data/adult/test.npy')
 
-    X_train, y_train = train_set[:,:-1], (train_set[:,-1]+1)/2
-    X_test, y_test = test_set[:,:-1], (test_set[:,-1]+1)/2 #.reshape(-1,1)
+#     X_train, y_train = train_set[:,:-1], (train_set[:,-1]+1)/2
+#     X_test, y_test = test_set[:,:-1], (test_set[:,-1]+1)/2 #.reshape(-1,1)
 
-    train = DataSet(X_train, y_train)
-    test = DataSet(X_test, y_test)
+#     train = DataSet(X_train, y_train)
+#     test = DataSet(X_test, y_test)
 
-    return base.Datasets(train=train, validation=test, test=test)
+#     return base.Datasets(train=train, validation=test, test=test)
 
 np.random.seed(42)
 
 
-# data_sets = load_spam()
-data_sets = load_adult_dataset()
+data_sets = load_spam()
+# data_sets = load_adult_dataset()
 
 num_classes = 2
 
@@ -70,6 +70,16 @@ tf_model = BinaryLogisticRegressionWithLBFGS(
     model_name='spam_logreg')
 
 tf_model.train()
+
+# test_idx = 8
+# actual_loss_diffs, predicted_loss_diffs_cg, indices_to_remove = experiments.test_retraining(
+#     tf_model,
+#     test_idx,
+#     iter_to_load=0,
+#     force_refresh=False,
+#     num_to_remove=500,
+#     remove_type='maxinf',
+#     random_seed=0)
 
 X_train = np.copy(tf_model.data_sets.train.x)
 Y_train = np.copy(tf_model.data_sets.train.labels)

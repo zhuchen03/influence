@@ -73,7 +73,9 @@ tf_model = BinaryLogisticRegressionWithLBFGS(
 tf_model.train()
 
 np.random.seed(0)
-test_idx = 9
+test_idx = 10008
+test_label = data_sets.test.labels[test_idx]
+
 actual_loss_diffs, predicted_loss_diffs_cg, indices_to_remove = experiments.test_retraining(
     tf_model,
     test_idx,
@@ -82,7 +84,8 @@ actual_loss_diffs, predicted_loss_diffs_cg, indices_to_remove = experiments.test
     num_to_remove=100, #data_sets.train.x.shape[0],
     remove_type='maxinf',
     random_seed=0)
-
+print(indices_to_remove)
+print(test_label)
 # np.random.seed(0)
 # test_idx = 9
 # actual_loss_diffs, predicted_loss_diffs_cg, indices_to_remove = experiments.test_retraining_1(

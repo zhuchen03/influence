@@ -93,13 +93,13 @@ tf_model.train()
 train_samples = data_sets.train.x.shape[0]
 np.random.seed(0)
 # train_idx = np.random.choice(train_samples, size=100, replace=False)
-b = np.load('output/all_train_100_on_100sv.npz')
+b = np.load('all_train_100_on_100sv.npz')
 train_idx = b['rs']
 print(train_idx)
-b = np.load('output/all_test.npz')
-sv = b['all_results'][0]
-print(sv)
-# sv = np.load('train_svs.npy')
+# b = np.load('output/all_test.npz')
+# sv = b['all_results'][0]
+# print(sv)
+sv = np.load('train_most_confusing_idxes_C1.npy')
 loss=[]
 inf=[]
 for i in range(len(sv)):
@@ -126,8 +126,7 @@ for i in range(len(sv)):
 print(loss)
 print(inf)
 
-np.savez(
-'output/all_train_100_on_100rs.npz', 
+np.savez('all_train_100_conf_points.npz', 
 sv=sv,
 rs=train_idx,
 actual_loss=loss,

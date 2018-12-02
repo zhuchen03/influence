@@ -90,7 +90,8 @@ hinge_W = model.sess.run(model.params)[0]
 model_margins = model.sess.run(model.margin, feed_dict=model.all_test_feed_dict)
 # Look at np.argsort(model_margins)[:10] to pick a test example
 # train_idx = np.argsort(model_margins)[:10]
-# print("Margins: {}, {}".format(train_idx, model_margins[:10]))
+# print("Margins: {}, {}".format(train_idx, model_margins[train_idx]))
+# pdb.set_trace()
 train_idx = np.load('/scratch0/GoGradients/code/svm_figures/train_most_confusing_idxes_C1.npy')
 
 np.random.seed(92)
@@ -104,8 +105,8 @@ influences = np.zeros([num_temps, num_train])
 # actual_loss_diffs = np.zeros([num_temps, num_to_remove])
 # predicted_loss_diffs = np.zeros([num_temps, num_to_remove])
 # indices_to_remove = np.zeros([num_temps, num_to_remove], dtype=np.int32)
-
-test_idx_list = list(set(list(train_idx) + list(np.random.randint(0,num_train, 10))))
+random_idxes = list(np.random.randint(0,num_train, 100))
+test_idx_list = random_idxes + list(set(random_idxes) - set(train_idx))
 
 for counter, temp in enumerate(temps):
 
@@ -141,7 +142,7 @@ for counter, temp in enumerate(temps):
         influence = []
         for test_idx in test_idx_list:
             if temp == 0:
-                actual_loss_diff, predicted_loss_diff, indices_to_remove= experiments.test_retraining_on_train(
+                actual_loss_diff, predicted_loss_diff, indices_to_remove = experiments.test_retraining_on_train(
                         model,
                         test_idx,
                         iter_to_load=0,
