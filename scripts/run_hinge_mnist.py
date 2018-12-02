@@ -25,22 +25,9 @@ import pdb
 import pickle
 import os
 
-def load_adult_dataset():
 
-    train_set = np.load('/scratch0/GoGradients/data/adult/train_transform_withlabel.npy')
-    test_set = np.load('/scratch0/GoGradients/data/adult/test_transform_withlabel.npy')
-
-    X_train, y_train = train_set[:,:-1], train_set[:,-1]
-    X_test, y_test = test_set[:,:-1], test_set[:,-1] #.reshape(-1,1)
-
-    train = DataSet(X_train, y_train)
-    test = DataSet(X_test, y_test)
-
-    return base.Datasets(train=train, validation=test, test=test)
-
-def get_dist(weights):
+def get_dist(weights, pts):
     # each row of pts represents a data
-    pts = np.load('/scratch0/GoGradients/data/adult/train_transform_withlabel.npy')[:,:-1]
     x = np.abs(np.sum(pts * weights.reshape(-1)[:-1].reshape(1, -1), 1)+weights[-1])
     return x
 
@@ -53,19 +40,57 @@ def plot_infuence(gt, pred, train_sample_idx):
     plt.figure()
     plt.plot(gt, pred)
     plt.title("Influence of sample {} on subset".format(train_sample_idx))
-    plt.savefig("figures/adult_trainsample{}_influence.png".format(train_sample_idx))
+    plt.savefig("figures/mnist_trainsample{}_influence.png".format(train_sample_idx))
 
-data_sets = load_adult_dataset()
+def load_mnist(data_type='train', binary=True, class_inds = [1,7]):
+    '''
+    load_mnist('train') for training data
+    load_mnist('test') for testing data
+    '''
+    MNIST_path = '/scratch0/GoGradients/data/MNIST'
+    if binary:
+        assert len(class_inds) == 2
+    X = np.load(os.path.join(MNIST_path, "{}Images.npy".format(data_type)))
+    Y = np.load(os.path.join(MNIST_path, "{}Labels.npy".format(data_type)))
+    if len(Y.shape) > 1:
+        Y = np.argmax(Y, axis=1)
+    N, C, W, H = X.shape
+    X = X.reshape(N, C*W*H)/255.
+    mask = [Y[i] in class_inds for i in range(N)]
+    X = X[mask, ...]
+    Y = Y[mask]
+    if binary:
+        for i in range(len(Y)):
+            if Y[i] == class_inds[0]:
+                Y[i] = -1
+            else:
+                Y[i] = 1
+    return X, Y.reshape(-1)
+
+def get_mnist_dset(class_inds=[1,7]):
+
+    X_train, y_train = load_mnist('train', class_inds=class_inds)
+    X_test, y_test = load_mnist('test', class_inds=class_inds)
+
+    train = DataSet(X_train, y_train)
+    test = DataSet(X_test, y_test)
+
+    return base.Datasets(train=train, validation=test, test=test)
+
+
+class_inds = [1,7]
+data_sets = get_mnist_dset(class_inds)
 num_train = data_sets.train._x.shape[0]
 
-svm_weight_dir, svm_bias_dir = '/scratch0/GoGradients/code/svm_figures/svm_weight.npy', '/scratch0/GoGradients/code/svm_figures/svm_bias.npy'
-res_dir = './svm_influence'
+svm_weight_dir, svm_bias_dir = '/scratch0/GoGradients/code/svm_figures/mnist_{}_{}/svm_weight.npy'.format(class_inds[0], class_inds[1]), \
+                               '/scratch0/GoGradients/code/svm_figures/mnist_{}_{}/svm_bias.npy'.format(class_inds[0], class_inds[1])
+res_dir = './svm_influence/mnist_{}_{}'.format(class_inds[0], class_inds[1])
 if not os.path.exists(res_dir):
     os.makedirs(res_dir)
 
 num_classes = 2
-input_dim = 20
-# weight_decay = 0.5 / data_sets.train._x.shape[0]
+input_dim = data_sets.train._x.shape[1]
+# need to make it equivalent to setting C = 1, since it takes mean when computing the loss
 weight_decay = 1. / data_sets.train._x.shape[0]
 use_bias = True
 batch_size = 100
@@ -114,7 +139,7 @@ model_margins = model.sess.run(model.margin, feed_dict=model.all_test_feed_dict)
 # train_idx = np.argsort(model_margins)[:10]
 # print("Margins: {}, {}".format(train_idx, model_margins[train_idx]))
 # pdb.set_trace()
-train_idx = np.load('/scratch0/GoGradients/code/svm_figures/train_most_confusing_idxes_C1.npy')
+train_idx = np.load('/scratch0/GoGradients/code/svm_figures/mnist_{}_{}/train_most_confusing_idxes_C1.npy'.format(class_inds[0], class_inds[1]))
 train_idx = np.concatenate([train_idx, np.random.randint(0, len(data_sets.train.labels), size=(100,))])
 
 
@@ -127,10 +152,11 @@ influences = np.zeros([num_temps, num_train])
 # predicted_loss_diffs = np.zeros([num_temps, num_to_remove])
 # indices_to_remove = np.zeros([num_temps, num_to_remove], dtype=np.int32)
 # random_idxes = list(np.random.randint(0,num_train, 100))
-bound_dist = get_dist(hinge_W)
+bound_dist = get_dist(hinge_W, data_sets.train._x)
 sorted_idxes = bound_dist.argsort()
 wrong_flags = get_wrong_flags(model, data_sets.train._x, data_sets.train._labels)
-chosen_subset = sorted_idxes[wrong_flags[sorted_idxes]][:20]
+
+chosen_subset = sorted_idxes[wrong_flags[sorted_idxes]]
 test_idx_list = chosen_subset
 print("Dists: {}, flags: {}".format(bound_dist[test_idx_list], wrong_flags[chosen_subset]))
 
@@ -181,7 +207,7 @@ for counter, temp in enumerate(temps):
                     model,
                     test_idx,
                     iter_to_load=0,
-                    force_refresh=True,
+                    force_refresh=False,
                     num_to_remove=remove_idx,  # data_sets.train.x.shape[0],
                     remove_type='random',
                     random_seed=0)
@@ -200,7 +226,7 @@ for counter, temp in enumerate(temps):
 
     plt.figure()
     plt.plot([i for i in range(len(train_idx))], total_inf_list)
-    plt.savefig("adult_temp{}_totalinfluence.png".format(temp))
+    plt.savefig(os.path.join(res_dir, "temp{}_totalinfluence.png".format(temp)))
     pickle.dump({"remove_idxes":train_idx, "total influences":total_inf_list})
     # cur_params, cur_margins = model.sess.run([model.params, model.margin], feed_dict=model.all_train_feed_dict)
     # cur_influences = model.get_influence_on_train_loss(
@@ -221,12 +247,12 @@ for counter, temp in enumerate(temps):
     #         num_steps=2000,
     #         remove_type='maxinf',
     #         num_to_remove=num_to_remove)
-
-np.savez(
-    'output/hinge_results', 
-    temps=temps,
-    indices_to_remove=indices_to_remove,
-    actual_loss_diffs=actual_loss_diffs,
-    predicted_loss_diffs=predicted_loss_diffs,
-    influences=influences
-)
+#
+# np.savez(
+#     'output/hinge_results',
+#     temps=temps,
+#     indices_to_remove=indices_to_remove,
+#     actual_loss_diffs=actual_loss_diffs,
+#     predicted_loss_diffs=predicted_loss_diffs,
+#     influences=influences
+# )

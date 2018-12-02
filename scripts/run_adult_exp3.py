@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 import sklearn.linear_model as linear_model
 
+
 import scipy
 import sklearn
 
@@ -21,6 +22,7 @@ import tensorflow as tf
 
 from influence.dataset import DataSet
 from tensorflow.contrib.learn.python.learn.datasets import base
+from scipy.stats import pearsonr
 
 def load_adult_dataset():
 
@@ -89,49 +91,132 @@ tf_model.train()
 #     all_results.append(indices_to_remove)
     
 # np.savez('output/all_test.npz', all_results=all_results)
+# #####################+++++++++++++++++++++=====================
+# # train_samples = data_sets.train.x.shape[0]
+# # np.random.seed(0)
+# # # train_idx = np.random.choice(train_samples, size=100, replace=False)
+# # b = np.load('all_train_100_on_100sv.npz')
+# # train_idx = b['rs']
+# # print(train_idx)
+# # # b = np.load('output/all_test.npz')
+# # # sv = b['all_results'][0]
+# # # print(sv)
+
+# sv = np.load('train_most_confusing_idxes_C1.npy')
+# loss=[]
+# inf=[]
+# test_idx = 9
+# actual_loss=[]
+# influence=[]
+# for i in range(len(sv)):
     
-train_samples = data_sets.train.x.shape[0]
-np.random.seed(0)
-# train_idx = np.random.choice(train_samples, size=100, replace=False)
-b = np.load('all_train_100_on_100sv.npz')
-train_idx = b['rs']
-print(train_idx)
-# b = np.load('output/all_test.npz')
-# sv = b['all_results'][0]
+# #     for test_idx in train_idx:
+#     actual_loss_diffs, predicted_loss_diffs_cg, indices_to_remove = experiments.rem_sv_inf_on_train_ind(
+#         tf_model,
+#         test_idx,
+#         iter_to_load=0,
+#         force_refresh=False,
+#         num_to_remove=sv[i], #data_sets.train.x.shape[0],
+#         remove_type='random',
+#         random_seed=0)
+#     print("*********************************",test_idx)
+#     print(actual_loss_diffs)
+#     print(predicted_loss_diffs_cg)
+#     actual_loss.append(actual_loss_diffs)
+#     influence.append(predicted_loss_diffs_cg[0])
+# #     loss.append(actual_loss)
+# #     inf.append(influence)
+# #     sv_on_train.append([actual_loss_diffs,predicted_loss_diffs_cg])   
+
 # print(sv)
+# print(actual_loss)
+# print(influence)
+# print('Correlation is %s' % pearsonr(np.array(actual_loss), np.array(influence))[0])
+
+# np.savez('adult_100_random.npz', 
+# idx=indices_to_remove,
+# actual_loss=actual_loss_diffs,
+# influence = predicted_loss_diffs_cg)
+
+# # np.savez('adult_100_random.npz', 
+# # sv=sv,
+# # rs=train_idx,
+# # actual_loss=loss,
+# # influence = inf)
+# #########################===================================
+#####################+++++++++++++++++++++=====================
+# # train_samples = data_sets.train.x.shape[0]
+# # np.random.seed(0)
+# # # train_idx = np.random.choice(train_samples, size=100, replace=False)
+# # b = np.load('all_train_100_on_100sv.npz')
+# # train_idx = b['rs']
+# # print(train_idx)
+# # # b = np.load('output/all_test.npz')
+# # # sv = b['all_results'][0]
+# # # print(sv)
+
+# sv = np.load('train_most_confusing_idxes_C1.npy')
+# loss=[]
+# inf=[]
+# test_idx = 9
+# actual_loss=[]
+# influence=[]
+# for i in range(len(sv)):
+    
+# #     for test_idx in train_idx:
+#     actual_loss_diffs, predicted_loss_diffs_cg, indices_to_remove = experiments.rem_sv_inf_on_train_ind(
+#         tf_model,
+#         test_idx,
+#         iter_to_load=0,
+#         force_refresh=False,
+#         num_to_remove=sv[i], #data_sets.train.x.shape[0],
+#         remove_type='random',
+#         random_seed=0)
+#     print("*********************************",test_idx)
+#     print(actual_loss_diffs)
+#     print(predicted_loss_diffs_cg)
+#     actual_loss.append(actual_loss_diffs)
+#     influence.append(predicted_loss_diffs_cg[0])
+# #     loss.append(actual_loss)
+# #     inf.append(influence)
+# #     sv_on_train.append([actual_loss_diffs,predicted_loss_diffs_cg])   
+
+# print(sv)
+# print(actual_loss)
+# print(influence)
+# print('Correlation is %s' % pearsonr(np.array(actual_loss), np.array(influence))[0])
+
+# np.savez('adult_100_our_computed_vectors1.npz', 
+# idx=sv,
+# actual_loss=actual_loss,
+# influence = influence)
+
+# # np.savez('adult_100_random.npz', 
+# # sv=sv,
+# # rs=train_idx,
+# # actual_loss=loss,
+# # influence = inf)
+#########################===================================
+test_idx = 9000
 sv = np.load('train_most_confusing_idxes_C1.npy')
-loss=[]
-inf=[]
-for i in range(len(sv)):
-    actual_loss=[]
-    influence=[]
-    for test_idx in train_idx:
-        actual_loss_diffs, predicted_loss_diffs_cg, indices_to_remove = experiments.rem_sv_inf_on_train_ind(
-            tf_model,
-            test_idx,
-            iter_to_load=0,
-            force_refresh=False,
-            num_to_remove=sv[i], #data_sets.train.x.shape[0],
-            remove_type='random',
-            random_seed=0)
-        print("*********************************",test_idx)
-        print(actual_loss_diffs)
-        print(predicted_loss_diffs_cg)
-        actual_loss.append(actual_loss_diffs)
-        influence.append(predicted_loss_diffs_cg[0])
-    loss.append(actual_loss)
-    inf.append(influence)
-#     sv_on_train.append([actual_loss_diffs,predicted_loss_diffs_cg])   
+print('%%%%%%%%',sv)
+actual_loss_diffs, predicted_loss_diffs_cg, indices_to_remove = experiments.test_retraining1(
+    tf_model,
+    test_idx,
+    iter_to_load=0,
+    force_refresh=False,
+    num_to_remove=100,
+    remove_type= 'maxinf',#'random',  #'maxinf',
+    random_seed=0, list1=[] )
 
-print(loss)
-print(inf)
+print(indices_to_remove)
+print(actual_loss_diffs)
+print(predicted_loss_diffs_cg)
+print(abs(actual_loss_diffs)-abs(predicted_loss_diffs_cg))
 
-np.savez('all_train_100_conf_points.npz', 
-sv=sv,
-rs=train_idx,
-actual_loss=loss,
-influence = inf)
-
-
+np.savez('adult_100_maxinf2a.npz', #our_computed_vectors2a
+idx=indices_to_remove,
+actual_loss=actual_loss_diffs,
+influence = predicted_loss_diffs_cg)
 
 

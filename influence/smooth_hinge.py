@@ -72,7 +72,7 @@ class SmoothHinge(GenericNeuralNet):
 
         super(SmoothHinge, self).__init__(**kwargs)
 
-        C = 1.0 / (self.num_train_examples * self.weight_decay)        
+        C = 1.0 / (self.num_train_examples * self.weight_decay)
         self.svm_model = svm.LinearSVC(
             C=C,
             loss='hinge',
@@ -222,7 +222,7 @@ class SmoothHinge(GenericNeuralNet):
             x0=x0,
             fprime=fmin_grad_fn,
             fhess_p=fmin_hvp_fn,            
-            avextol=1e-8,
+            avextol=1e-9,
             maxiter=100)
 
         W = np.reshape(fmin_results, -1)
