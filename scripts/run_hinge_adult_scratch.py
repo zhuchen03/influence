@@ -53,7 +53,7 @@ keep_probs = None
 decay_epochs = [1000, 10000]
 max_lbfgs_iter = 1000
 
-temps = [1e-3]#, 0.00001, 0.001, 0.1]
+temps = [0.001, 0.1]
 num_temps = len(temps)
 
 num_params = input_dim + 1
@@ -80,18 +80,17 @@ model = SmoothHinge(
     log_dir='log',
     model_name='smooth_hinge_17_t-%s' % temp)
 
-# model.train()
+model.train()
 # model.load_checkpoint(iter_to_load=0)
-model.set_params_from_npy(svm_weight_dir, svm_bias_dir)
+# model.set_params_from_npy(svm_weight_dir, svm_bias_dir)
 model.saver.save(model.sess, model.checkpoint_file, global_step=0)
 
 hinge_W = model.sess.run(model.params)[0]
 
 model_margins = model.sess.run(model.margin, feed_dict=model.all_test_feed_dict)
 # Look at np.argsort(model_margins)[:10] to pick a test example
-# train_idx = np.argsort(model_margins)[:10]
-# print("Margins: {}, {}".format(train_idx, model_margins[:10]))
-train_idx = np.load('/scratch0/GoGradients/code/svm_figures/train_most_confusing_idxes_C1.npy')
+train_idx = np.argsort(model_margins)[:10]
+print("Margins: {}".format(train_idx))
 
 np.random.seed(92)
 
@@ -141,7 +140,7 @@ for counter, temp in enumerate(temps):
         influence = []
         for test_idx in test_idx_list:
             if temp == 0:
-                actual_loss_diff, predicted_loss_diff, indices_to_remove= experiments.test_retraining_on_train(
+                actual_loss_diffs, predicted_loss_diff, indices_to_remove[counter, :] = experiments.test_retraining_on_train(
                         model,
                         test_idx,
                         iter_to_load=0,
@@ -150,7 +149,7 @@ for counter, temp in enumerate(temps):
                         remove_type='given',
                         num_to_remove=remove_idx)
             else:
-                actual_loss_diff, predicted_loss_diff, indices_to_remove = experiments.rem_sv_inf_on_train_ind(
+                actual_loss_diff, predicted_loss_diffs_cg, indices_to_remove = experiments.rem_sv_inf_on_train_ind(
                     model,
                     test_idx,
                     iter_to_load=0,
@@ -158,11 +157,11 @@ for counter, temp in enumerate(temps):
                     num_to_remove=remove_idx,  # data_sets.train.x.shape[0],
                     remove_type='random',
                     random_seed=0)
-            print("*********************************", remove_idx, test_idx)
-            print(actual_loss_diff)
-            print(predicted_loss_diff)
-            actual_loss_diff_list.append(actual_loss_diff)
-            influence.append(predicted_loss_diff)
+                print("*********************************", remove_idx, test_idx)
+                print(actual_loss_diff)
+                print(predicted_loss_diffs_cg)
+                actual_loss_diff_list.append(actual_loss_diff)
+                influence.append(predicted_loss_diffs_cg)
         total_inf = np.sum(np.abs(influence))
         inf_dict = {"total_inf":total_inf, "subset_idx":test_idx_list, "train_idx": remove_idx,
                     "infs": influence, "ground_truth": actual_loss_diff_list}

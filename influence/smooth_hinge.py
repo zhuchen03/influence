@@ -29,9 +29,11 @@ def log_loss(x, t):
     # exponents = -(x)/t
     max_elems = tf.maximum(exponents, tf.zeros_like(exponents))
 
-    return t * (max_elems + tf.log(
-        tf.exp(exponents - max_elems) + 
+    ret = t * (max_elems + tf.log(
+        tf.exp(exponents - max_elems) +
         tf.exp(tf.zeros_like(exponents) - max_elems)))
+
+    return ret
     # return t * tf.log(tf.exp(-(x)/t) + 1)        
 
 def hinge(x):

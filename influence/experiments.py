@@ -216,7 +216,7 @@ def rem_sv_inf_on_train_ind(model, test_idx, iter_to_load, force_refresh=False,
 
     model.retrain(num_steps=num_steps, feed_dict=model.all_train_feed_dict)
     retrained_test_loss_val = sess.run(model.loss_no_reg, feed_dict=test_feed_dict)
-    retrained_train_loss_val = sess.run(model.total_loss, feed_dict=model.all_train_feed_dict)
+    # retrained_train_loss_val = sess.run(model.total_loss, feed_dict=model.all_train_feed_dict)
     # retrained_train_loss_val = model.minibatch_mean_eval([model.total_loss], model.data_sets.train)[0]
 
     model.load_checkpoint(iter_to_load, do_checks=False)
@@ -234,7 +234,7 @@ def rem_sv_inf_on_train_ind(model, test_idx, iter_to_load, force_refresh=False,
 #     retrained_test_loss_val, retrained_params_val = sess.run([model.loss_no_reg, model.params], feed_dict=test_feed_dict)
     retrained_train_loss_val, retrained_params_val = sess.run([model.total_loss, model.params], feed_dict=model.all_train_feed_dict)
     
-    actual_loss_diffs = retrained_train_loss_val - train_loss_val
+    actual_loss_diffs = retrained_test_loss_val - train_loss_val
 
     print('Diff in params: %s' % np.linalg.norm(np.concatenate(params_val) - np.concatenate(retrained_params_val)))      
     print('Loss on test idx with original model    : %s' % test_loss_val)
@@ -630,7 +630,7 @@ def test_retraining_on_train(model, test_idx, iter_to_load, force_refresh=False,
     model.load_checkpoint(iter_to_load)
     sess = model.sess
 
-    y_test = model.data_sets.test.labels[test_idx]
+    y_test = model.data_sets.train.labels[test_idx]
     print('Test label: %s' % y_test)
 
     ## Or, randomly remove training examples
@@ -652,9 +652,9 @@ def test_retraining_on_train(model, test_idx, iter_to_load, force_refresh=False,
         indices_to_remove = [num_to_remove]
         predicted_loss_diffs = model.get_influence_on_train_loss(
             [test_idx],
-            np.arange(len(model.data_sets.train.labels)),
+            indices_to_remove,
             force_refresh=force_refresh)
-        predicted_loss_diffs = predicted_loss_diffs[indices_to_remove]
+        # predicted_loss_diffs = predicted_loss_diffs[0]
     else:
         raise ValueError, 'remove_type not well specified'
     actual_loss_diffs = np.zeros([num_to_remove])

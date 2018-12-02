@@ -653,6 +653,8 @@ class GenericNeuralNet(object):
             num_iter = int(np.ceil(len(test_indices) / batch_size))
 
             test_grad_loss_no_reg_val = None
+            # import pdb
+            # pdb.set_trace()
             for i in range(num_iter):
                 start = i * batch_size
                 end = int(min((i+1) * batch_size, len(test_indices)))
