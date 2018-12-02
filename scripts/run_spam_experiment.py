@@ -19,9 +19,27 @@ from load_spam import load_spam
 
 import tensorflow as tf
 
+from influence.dataset import DataSet
+from tensorflow.contrib.learn.python.learn.datasets import base
+
+def load_adult_dataset():
+
+    train_set = np.load('/scratch0/GoGradients/data/adult/train.npy')
+    test_set = np.load('/scratch0/GoGradients/data/adult/test.npy')
+
+    X_train, y_train = train_set[:,:-1], (train_set[:,-1]+1)/2
+    X_test, y_test = test_set[:,:-1], (test_set[:,-1]+1)/2 #.reshape(-1,1)
+
+    train = DataSet(X_train, y_train)
+    test = DataSet(X_test, y_test)
+
+    return base.Datasets(train=train, validation=test, test=test)
+
 np.random.seed(42)
 
-data_sets = load_spam()
+
+# data_sets = load_spam()
+data_sets = load_adult_dataset()
 
 num_classes = 2
 

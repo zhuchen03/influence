@@ -110,6 +110,29 @@ def load_mnist(train_dir, validation_size=5000):
 
   return base.Datasets(train=train, validation=validation, test=test)
 
+def load_adult_dataset(train_dir, validation_size=5000):
+
+    train_set = np.load('/scratch0/GoGradients/data/adult/train.npy')
+    test_set = np.load('/scratch0/GoGradients/data/adult/test.npy')
+
+    X_train, y_train = train_set[:,:-1], train_set[:,-1].reshape(-1,1)
+    X_test, y_test = test_set[:,:-1], test_set[:,-1].reshape(-1,1)
+
+#   validation_images = train_images[:validation_size]
+#   validation_labels = train_labels[:validation_size]
+#   train_images = train_images[validation_size:]
+#   train_labels = train_labels[validation_size:]
+
+#   train_images = train_images.astype(np.float32) / 255
+#   validation_images = validation_images.astype(np.float32) / 255
+#   test_images = test_images.astype(np.float32) / 255
+
+    train = DataSet(X_train, y_train)
+#   validation = DataSet(validation_images, validation_labels)
+    test = DataSet(X_test, y_test)
+
+    return base.Datasets(train=train, validation=train, test=test)
+
 def load_small_mnist(train_dir, validation_size=5000, random_seed=0):
   np.random.seed(random_seed)
   data_sets = load_mnist(train_dir, validation_size)

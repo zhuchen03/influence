@@ -82,10 +82,276 @@ def viz_top_influential_examples(model, test_idx):
                 model.data_sets.train.labels[idx], 
                 predicted_loss_diffs[idx]))
 
+def on_test_ind(model, test_idx, iter_to_load, force_refresh=False, 
+                    num_to_remove=50, num_steps=1000, random_seed=17,
+                    remove_type='random'):
 
+    np.random.seed(random_seed)
+
+    model.load_checkpoint(iter_to_load)
+    sess = model.sess
+
+    
+    y_test = model.data_sets.test.labels[test_idx]
+    print('Test label: %s' % y_test)
+
+    ## Or, randomly remove training examples
+    if remove_type == 'random':
+        indices_to_remove = np.random.choice(model.num_train_examples, size=num_to_remove, replace=False)
+        predicted_loss_diffs = model.get_influence_on_test_loss(
+            [test_idx], 
+            indices_to_remove,
+            force_refresh=force_refresh)
+    ## Or, remove the most influential training examples
+    elif remove_type == 'maxinf':    
+        predicted_loss_diffs = model.get_influence_on_test_loss(
+            [test_idx], 
+            np.arange(len(model.data_sets.train.labels)),
+            force_refresh=force_refresh)
+        indices_to_remove = np.argsort(np.abs(predicted_loss_diffs))[-num_to_remove:]
+        predicted_loss_diffs = predicted_loss_diffs[indices_to_remove]
+        print('INDECES:',indices_to_remove)
+        print('LOSS:',predicted_loss_diffs)
+    else:
+        raise ValueError, 'remove_type not well specified'
+    actual_loss_diffs = np.zeros([num_to_remove])
+
+    # Sanity check
+    test_feed_dict = model.fill_feed_dict_with_one_ex(
+        model.data_sets.test,  
+        test_idx)    
+    test_loss_val, params_val = sess.run([model.loss_no_reg, model.params], feed_dict=test_feed_dict)
+    train_loss_val = sess.run(model.total_loss, feed_dict=model.all_train_feed_dict)
+    # train_loss_val = model.minibatch_mean_eval([model.total_loss], model.data_sets.train)[0]
+
+    model.retrain(num_steps=num_steps, feed_dict=model.all_train_feed_dict)
+    retrained_test_loss_val = sess.run(model.loss_no_reg, feed_dict=test_feed_dict)
+    retrained_train_loss_val = sess.run(model.total_loss, feed_dict=model.all_train_feed_dict)
+    # retrained_train_loss_val = model.minibatch_mean_eval([model.total_loss], model.data_sets.train)[0]
+
+    model.load_checkpoint(iter_to_load, do_checks=False)
+
+    print('Sanity check: what happens if you train the model a bit more?')
+    print('Loss on test idx with original model    : %s' % test_loss_val)
+    print('Loss on test idx with retrained model   : %s' % retrained_test_loss_val)
+    print('Difference in test loss after retraining     : %s' % (retrained_test_loss_val - test_loss_val))
+    print('===')
+    print('Total loss on training set with original model    : %s' % train_loss_val)
+    print('Total loss on training with retrained model   : %s' % retrained_train_loss_val)
+    print('Difference in train loss after retraining     : %s' % (retrained_train_loss_val - train_loss_val))
+    
+    print('These differences should be close to 0.\n')
+
+    # Retraining experiment
+    
+    for counter, idx_to_remove in enumerate(indices_to_remove):
+#         assert(counter == idx_to_remove)
+        print("=== #%s ===" % counter)
+        print('Retraining without train_idx %s (label %s):' % (idx_to_remove, model.data_sets.train.labels[idx_to_remove]))
+
+        train_feed_dict = model.fill_feed_dict_with_all_but_one_ex(model.data_sets.train, idx_to_remove)
+        model.retrain(num_steps=num_steps, feed_dict=train_feed_dict)
+        retrained_test_loss_val, retrained_params_val = sess.run([model.loss_no_reg, model.params], feed_dict=test_feed_dict)
+        actual_loss_diffs[counter] = retrained_test_loss_val - test_loss_val
+
+        print('Diff in params: %s' % np.linalg.norm(np.concatenate(params_val) - np.concatenate(retrained_params_val)))      
+        print('Loss on test idx with original model    : %s' % test_loss_val)
+        print('Loss on test idx with retrained model   : %s' % retrained_test_loss_val)
+        print('Difference in loss after retraining     : %s' % actual_loss_diffs[counter])
+        print('Predicted difference in loss (influence): %s' % predicted_loss_diffs[counter])
+
+        # Restore params
+        model.load_checkpoint(iter_to_load, do_checks=False)
+        
+
+    np.savez(
+        'output/%s_loss_diffs' % model.model_name, 
+        actual_loss_diffs=actual_loss_diffs, 
+        predicted_loss_diffs=predicted_loss_diffs)
+
+    print('Correlation is %s' % pearsonr(actual_loss_diffs, predicted_loss_diffs)[0])
+    return actual_loss_diffs, predicted_loss_diffs, indices_to_remove
+
+def rem_sv_inf_on_train_ind(model, test_idx, iter_to_load, force_refresh=False, 
+                    num_to_remove=50, num_steps=1000, random_seed=17,
+                    remove_type='random'):
+
+    np.random.seed(random_seed)
+    ### num_to_remove : the the training sample removed
+
+    model.load_checkpoint(iter_to_load)
+    sess = model.sess
+
+    
+    y_test = model.data_sets.train.labels[test_idx]
+    print('Test label: %s' % y_test)
+
+    ## Or, randomly remove training examples
+    if remove_type == 'random':
+        indices_to_remove = np.array([num_to_remove])
+#         print('LOL', indices_to_remove)
+        predicted_loss_diffs = model.get_influence_on_train_loss(
+            [test_idx], 
+            indices_to_remove,
+            force_refresh=force_refresh)
+    ## Or, remove the most influential training examples
+    elif remove_type == 'maxinf':    
+        predicted_loss_diffs = model.get_influence_on_test_loss(
+            [test_idx], 
+            np.arange(len(model.data_sets.train.labels)),
+            force_refresh=force_refresh)
+        indices_to_remove = np.argsort(np.abs(predicted_loss_diffs))[-num_to_remove:]
+        predicted_loss_diffs = predicted_loss_diffs[indices_to_remove]
+    else:
+        raise ValueError, 'remove_type not well specified'
+    actual_loss_diffs = np.zeros([num_to_remove])
+
+    # Sanity check
+    test_feed_dict = model.fill_feed_dict_with_one_ex(
+        model.data_sets.train,  
+        test_idx)    
+    test_loss_val, params_val = sess.run([model.loss_no_reg, model.params], feed_dict=test_feed_dict)
+    train_loss_val = sess.run(model.total_loss, feed_dict=model.all_train_feed_dict)
+    # train_loss_val = model.minibatch_mean_eval([model.total_loss], model.data_sets.train)[0]
+
+    model.retrain(num_steps=num_steps, feed_dict=model.all_train_feed_dict)
+    retrained_test_loss_val = sess.run(model.loss_no_reg, feed_dict=test_feed_dict)
+    retrained_train_loss_val = sess.run(model.total_loss, feed_dict=model.all_train_feed_dict)
+    # retrained_train_loss_val = model.minibatch_mean_eval([model.total_loss], model.data_sets.train)[0]
+
+    model.load_checkpoint(iter_to_load, do_checks=False)
+
+
+    counter = test_idx
+    print(num_to_remove)
+    idx_to_remove = num_to_remove
+
+    print("=== #%s ===" % counter)
+    print('Retraining without train_idx %s (label %s):' % (idx_to_remove, model.data_sets.train.labels[idx_to_remove]))
+
+    train_feed_dict = model.fill_feed_dict_with_all_but_one_ex(model.data_sets.train, idx_to_remove)
+    model.retrain(num_steps=num_steps, feed_dict=train_feed_dict)
+#     retrained_test_loss_val, retrained_params_val = sess.run([model.loss_no_reg, model.params], feed_dict=test_feed_dict)
+    retrained_train_loss_val, retrained_params_val = sess.run([model.total_loss, model.params], feed_dict=model.all_train_feed_dict)
+    
+    actual_loss_diffs = retrained_train_loss_val - train_loss_val
+
+    print('Diff in params: %s' % np.linalg.norm(np.concatenate(params_val) - np.concatenate(retrained_params_val)))      
+    print('Loss on test idx with original model    : %s' % test_loss_val)
+    print('Loss on test idx with retrained model   : %s' % retrained_test_loss_val)
+    print('Difference in loss after retraining     : %s' % actual_loss_diffs)
+    print('Predicted difference in loss (influence): %s' % predicted_loss_diffs[0])
+
+    # Restore params
+    model.load_checkpoint(iter_to_load, do_checks=False)
+
+
+#     np.savez(
+#         'output/%s_loss_diffs' % model.model_name, 
+#         actual_loss_diffs=actual_loss_diffs, 
+#         predicted_loss_diffs=predicted_loss_diffs)
+
+#     print('Correlation is %s' % pearsonr([actual_loss_diffs], predicted_loss_diffs))
+    return actual_loss_diffs, predicted_loss_diffs, indices_to_remove
 
 
 def test_retraining(model, test_idx, iter_to_load, force_refresh=False, 
+                    num_to_remove=50, num_steps=1000, random_seed=17,
+                    remove_type='random'):
+
+    np.random.seed(random_seed)
+
+    model.load_checkpoint(iter_to_load)
+    sess = model.sess
+
+    
+    y_test = model.data_sets.test.labels[test_idx]
+    print('Test label: %s' % y_test)
+
+    ## Or, randomly remove training examples
+    if remove_type == 'random':
+        indices_to_remove = np.random.choice(model.num_train_examples, size=num_to_remove, replace=False)
+        predicted_loss_diffs = model.get_influence_on_test_loss(
+            [test_idx], 
+            indices_to_remove,
+            force_refresh=force_refresh)
+    ## Or, remove the most influential training examples
+    elif remove_type == 'maxinf':    
+        predicted_loss_diffs = model.get_influence_on_test_loss(
+            [test_idx], 
+            np.arange(len(model.data_sets.train.labels)),
+            force_refresh=force_refresh)
+        indices_to_remove = np.argsort(np.abs(predicted_loss_diffs))[-num_to_remove:]
+        predicted_loss_diffs = predicted_loss_diffs[indices_to_remove]
+    elif remove_type == 'given':
+        indices_to_remove = [num_to_remove]
+        predicted_loss_diffs = model.get_influence_on_test_loss(
+            [test_idx],
+            np.arange(len(model.data_sets.train.labels)),
+            force_refresh=force_refresh)
+        predicted_loss_diffs = predicted_loss_diffs[indices_to_remove]
+    else:
+        raise ValueError, 'remove_type not well specified'
+    actual_loss_diffs = np.zeros([num_to_remove])
+
+    # Sanity check
+    test_feed_dict = model.fill_feed_dict_with_one_ex(
+        model.data_sets.test,  
+        test_idx)    
+    test_loss_val, params_val = sess.run([model.loss_no_reg, model.params], feed_dict=test_feed_dict)
+    train_loss_val = sess.run(model.total_loss, feed_dict=model.all_train_feed_dict)
+    # train_loss_val = model.minibatch_mean_eval([model.total_loss], model.data_sets.train)[0]
+
+    model.retrain(num_steps=num_steps, feed_dict=model.all_train_feed_dict)
+    retrained_test_loss_val = sess.run(model.loss_no_reg, feed_dict=test_feed_dict)
+    retrained_train_loss_val = sess.run(model.total_loss, feed_dict=model.all_train_feed_dict)
+    # retrained_train_loss_val = model.minibatch_mean_eval([model.total_loss], model.data_sets.train)[0]
+
+    model.load_checkpoint(iter_to_load, do_checks=False)
+
+    print('Sanity check: what happens if you train the model a bit more?')
+    print('Loss on test idx with original model    : %s' % test_loss_val)
+    print('Loss on test idx with retrained model   : %s' % retrained_test_loss_val)
+    print('Difference in test loss after retraining     : %s' % (retrained_test_loss_val - test_loss_val))
+    print('===')
+    print('Total loss on training set with original model    : %s' % train_loss_val)
+    print('Total loss on training with retrained model   : %s' % retrained_train_loss_val)
+    print('Difference in train loss after retraining     : %s' % (retrained_train_loss_val - train_loss_val))
+    
+    print('These differences should be close to 0.\n')
+
+    # Retraining experiment
+    
+    for counter, idx_to_remove in enumerate(indices_to_remove):
+
+        print("=== #%s ===" % counter)
+        print('Retraining without train_idx %s (label %s):' % (idx_to_remove, model.data_sets.train.labels[idx_to_remove]))
+
+        train_feed_dict = model.fill_feed_dict_with_all_but_one_ex(model.data_sets.train, idx_to_remove)
+        model.retrain(num_steps=num_steps, feed_dict=train_feed_dict)
+        retrained_test_loss_val, retrained_params_val = sess.run([model.loss_no_reg, model.params], feed_dict=test_feed_dict)
+        actual_loss_diffs[counter] = retrained_test_loss_val - test_loss_val
+
+        print('Diff in params: %s' % np.linalg.norm(np.concatenate(params_val) - np.concatenate(retrained_params_val)))      
+        print('Loss on test idx with original model    : %s' % test_loss_val)
+        print('Loss on test idx with retrained model   : %s' % retrained_test_loss_val)
+        print('Difference in loss after retraining     : %s' % actual_loss_diffs[counter])
+        print('Predicted difference in loss (influence): %s' % predicted_loss_diffs[counter])
+
+        # Restore params
+        model.load_checkpoint(iter_to_load, do_checks=False)
+        
+
+    np.savez(
+        'output/%s_loss_diffs' % model.model_name, 
+        actual_loss_diffs=actual_loss_diffs, 
+        predicted_loss_diffs=predicted_loss_diffs)
+
+    print('Correlation is %s' % pearsonr(actual_loss_diffs, predicted_loss_diffs)[0])
+    return actual_loss_diffs, predicted_loss_diffs, indices_to_remove
+
+####### Removing train samples in serial order and Retraining 
+def test_retraining_1(model, test_idx, iter_to_load, force_refresh=False, 
                     num_to_remove=50, num_steps=1000, random_seed=17,
                     remove_type='random'):
 
@@ -144,8 +410,12 @@ def test_retraining(model, test_idx, iter_to_load, force_refresh=False,
     print('These differences should be close to 0.\n')
 
     # Retraining experiment
+    print('=======================',indices_to_remove)
+    indices_to_remove = np.array(range(num_to_remove))
+    print('=======================',indices_to_remove)
+    
     for counter, idx_to_remove in enumerate(indices_to_remove):
-
+        assert(counter == idx_to_remove)
         print("=== #%s ===" % counter)
         print('Retraining without train_idx %s (label %s):' % (idx_to_remove, model.data_sets.train.labels[idx_to_remove]))
 
@@ -167,6 +437,279 @@ def test_retraining(model, test_idx, iter_to_load, force_refresh=False,
     np.savez(
         'output/%s_loss_diffs' % model.model_name, 
         actual_loss_diffs=actual_loss_diffs, 
+        predicted_loss_diffs=predicted_loss_diffs)
+
+    print('Correlation is %s' % pearsonr(actual_loss_diffs, predicted_loss_diffs)[0])
+    return actual_loss_diffs, predicted_loss_diffs, indices_to_remove
+
+### Retraining the model by removing just one training point and computing the loss for one test points at a time
+def test_retraining_2(model, test_idx, iter_to_load, force_refresh=False, 
+                    num_to_remove=50, num_steps=1000, random_seed=17,
+                    remove_type='random'):
+
+    np.random.seed(random_seed)
+    ### num_to_remove : the the training sample removed
+
+    model.load_checkpoint(iter_to_load)
+    sess = model.sess
+
+    
+    y_test = model.data_sets.test.labels[test_idx]
+    print('Test label: %s' % y_test)
+
+    ## Or, randomly remove training examples
+    if remove_type == 'random':
+        indices_to_remove = np.array([num_to_remove])
+#         print('LOL', indices_to_remove)
+        predicted_loss_diffs = model.get_influence_on_test_loss(
+            [test_idx], 
+            indices_to_remove,
+            force_refresh=force_refresh)
+    ## Or, remove the most influential training examples
+    elif remove_type == 'maxinf':    
+        predicted_loss_diffs = model.get_influence_on_test_loss(
+            [test_idx], 
+            np.arange(len(model.data_sets.train.labels)),
+            force_refresh=force_refresh)
+        indices_to_remove = np.argsort(np.abs(predicted_loss_diffs))[-num_to_remove:]
+        predicted_loss_diffs = predicted_loss_diffs[indices_to_remove]
+    else:
+        raise ValueError, 'remove_type not well specified'
+    actual_loss_diffs = np.zeros([num_to_remove])
+
+    # Sanity check
+    test_feed_dict = model.fill_feed_dict_with_one_ex(
+        model.data_sets.test,  
+        test_idx)    
+    test_loss_val, params_val = sess.run([model.loss_no_reg, model.params], feed_dict=test_feed_dict)
+    train_loss_val = sess.run(model.total_loss, feed_dict=model.all_train_feed_dict)
+    # train_loss_val = model.minibatch_mean_eval([model.total_loss], model.data_sets.train)[0]
+
+    model.retrain(num_steps=num_steps, feed_dict=model.all_train_feed_dict)
+    retrained_test_loss_val = sess.run(model.loss_no_reg, feed_dict=test_feed_dict)
+    retrained_train_loss_val = sess.run(model.total_loss, feed_dict=model.all_train_feed_dict)
+    # retrained_train_loss_val = model.minibatch_mean_eval([model.total_loss], model.data_sets.train)[0]
+
+    model.load_checkpoint(iter_to_load, do_checks=False)
+
+#     print('Sanity check: what happens if you train the model a bit more?')
+#     print('Loss on test idx with original model    : %s' % test_loss_val)
+#     print('Loss on test idx with retrained model   : %s' % retrained_test_loss_val)
+#     print('Difference in test loss after retraining     : %s' % (retrained_test_loss_val - test_loss_val))
+#     print('===')
+#     print('Total loss on training set with original model    : %s' % train_loss_val)
+#     print('Total loss on training with retrained model   : %s' % retrained_train_loss_val)
+#     print('Difference in train loss after retraining     : %s' % (retrained_train_loss_val - train_loss_val))
+    
+#     print('These differences should be close to 0.\n')
+
+    # Retraining experiment
+#     for counter, idx_to_remove in enumerate(indices_to_remove):
+    counter = test_idx
+    print(num_to_remove)
+    idx_to_remove = num_to_remove
+
+    print("=== #%s ===" % counter)
+    print('Retraining without train_idx %s (label %s):' % (idx_to_remove, model.data_sets.train.labels[idx_to_remove]))
+
+    train_feed_dict = model.fill_feed_dict_with_all_but_one_ex(model.data_sets.train, idx_to_remove)
+    model.retrain(num_steps=num_steps, feed_dict=train_feed_dict)
+    retrained_test_loss_val, retrained_params_val = sess.run([model.loss_no_reg, model.params], feed_dict=test_feed_dict)
+    print(retrained_test_loss_val)
+    print(test_loss_val)
+    actual_loss_diffs = retrained_test_loss_val - test_loss_val
+
+    print('Diff in params: %s' % np.linalg.norm(np.concatenate(params_val) - np.concatenate(retrained_params_val)))      
+    print('Loss on test idx with original model    : %s' % test_loss_val)
+    print('Loss on test idx with retrained model   : %s' % retrained_test_loss_val)
+    print('Difference in loss after retraining     : %s' % actual_loss_diffs)
+    print('Predicted difference in loss (influence): %s' % predicted_loss_diffs[0])
+
+    # Restore params
+    model.load_checkpoint(iter_to_load, do_checks=False)
+
+
+    np.savez(
+        'output/%s_loss_diffs' % model.model_name, 
+        actual_loss_diffs=actual_loss_diffs, 
+        predicted_loss_diffs=predicted_loss_diffs)
+
+#     print('Correlation is %s' % pearsonr([actual_loss_diffs], predicted_loss_diffs))
+    return actual_loss_diffs, predicted_loss_diffs, indices_to_remove
+
+
+def test_retraining_3(model, train_idx, iter_to_load, force_refresh=False, 
+                    num_to_remove=50, num_steps=1000, random_seed=17,
+                    remove_type='random'):
+
+    np.random.seed(random_seed)
+
+    model.load_checkpoint(iter_to_load)
+    sess = model.sess
+
+    
+    y_train = model.data_sets.train.labels[train_idx]
+    print('Test on train label: %s' % y_train)
+
+    ## Or, randomly remove training examples
+    if remove_type == 'random':
+        indices_to_remove = np.random.choice(model.num_train_examples, size=num_to_remove, replace=False)
+        predicted_loss_diffs = model.get_influence_on_test_loss(
+            [train_idx], 
+            indices_to_remove,
+            force_refresh=force_refresh)
+    ## Or, remove the most influential training examples
+    elif remove_type == 'maxinf':    
+        predicted_loss_diffs = model.get_influence_on_test_loss(
+            [train_idx], 
+            np.arange(len(model.data_sets.train.labels)),
+            force_refresh=force_refresh)
+        indices_to_remove = np.argsort(np.abs(predicted_loss_diffs))[-num_to_remove:]
+        predicted_loss_diffs = predicted_loss_diffs[indices_to_remove]
+    else:
+        raise ValueError, 'remove_type not well specified'
+    actual_loss_diffs = np.zeros([num_to_remove])
+
+    # Sanity check
+    test_feed_dict = model.fill_feed_dict_with_one_ex(
+        model.data_sets.test,  
+        train_idx)    
+    test_loss_val, params_val = sess.run([model.loss_no_reg, model.params], feed_dict=test_feed_dict)
+    train_loss_val = sess.run(model.total_loss, feed_dict=model.all_train_feed_dict)
+    # train_loss_val = model.minibatch_mean_eval([model.total_loss], model.data_sets.train)[0]
+
+    model.retrain(num_steps=num_steps, feed_dict=model.all_train_feed_dict)
+    retrained_test_loss_val = sess.run(model.loss_no_reg, feed_dict=test_feed_dict)
+    retrained_train_loss_val = sess.run(model.total_loss, feed_dict=model.all_train_feed_dict)
+    # retrained_train_loss_val = model.minibatch_mean_eval([model.total_loss], model.data_sets.train)[0]
+
+    model.load_checkpoint(iter_to_load, do_checks=False)
+    
+#     print('These differences should be close to 0.\n')
+
+    # Retraining experiment
+#     print('=======================',indices_to_remove)
+#     indices_to_remove = np.array(range(num_to_remove))
+#     print('=======================',indices_to_remove)
+    
+    for counter, idx_to_remove in enumerate(indices_to_remove):
+#         assert(counter == idx_to_remove)
+        print("=== #%s ===" % counter)
+        print('Retraining without train_idx %s (label %s):' % (idx_to_remove, model.data_sets.train.labels[idx_to_remove]))
+
+        train_feed_dict = model.fill_feed_dict_with_all_but_one_ex(model.data_sets.train, idx_to_remove)
+        model.retrain(num_steps=num_steps, feed_dict=train_feed_dict)
+        retrained_train_loss_val, retrained_params_val = sess.run([model.total_loss,model.params], feed_dict=model.all_train_feed_dict)
+#         retrained_test_loss_val, retrained_params_val = sess.run([model.loss_no_reg, model.params], feed_dict=test_feed_dict)
+        actual_loss_diffs[counter] = retrained_train_loss_val - train_loss_val
+
+        print('Diff in params: %s' % np.linalg.norm(np.concatenate(params_val) - np.concatenate(retrained_params_val)))      
+        print('Loss on test idx with original model    : %s' % test_loss_val)
+        print('Loss on test idx with retrained model   : %s' % retrained_test_loss_val)
+        print('Difference in loss after retraining     : %s' % actual_loss_diffs[counter])
+        print('Predicted difference in loss (influence): %s' % predicted_loss_diffs[counter])
+
+        # Restore params
+        model.load_checkpoint(iter_to_load, do_checks=False)
+        
+
+    np.savez(
+        'output/%s_loss_diffs' % model.model_name, 
+        actual_loss_diffs=actual_loss_diffs, 
+        predicted_loss_diffs=predicted_loss_diffs)
+
+    print('Correlation is %s' % pearsonr(actual_loss_diffs, predicted_loss_diffs)[0])
+    return actual_loss_diffs, predicted_loss_diffs, indices_to_remove
+
+
+def test_retraining_on_train(model, test_idx, iter_to_load, force_refresh=False,
+                    num_to_remove=50, num_steps=1000, random_seed=17,
+                    remove_type='random'):
+    np.random.seed(random_seed)
+
+    model.load_checkpoint(iter_to_load)
+    sess = model.sess
+
+    y_test = model.data_sets.test.labels[test_idx]
+    print('Test label: %s' % y_test)
+
+    ## Or, randomly remove training examples
+    if remove_type == 'random':
+        indices_to_remove = np.random.choice(model.num_train_examples, size=num_to_remove, replace=False)
+        predicted_loss_diffs = model.get_influence_on_train_loss(
+            [test_idx],
+            indices_to_remove,
+            force_refresh=force_refresh)
+    ## Or, remove the most influential training examples
+    elif remove_type == 'maxinf':
+        predicted_loss_diffs = model.get_influence_on_train_loss(
+            [test_idx],
+            np.arange(len(model.data_sets.train.labels)),
+            force_refresh=force_refresh)
+        indices_to_remove = np.argsort(np.abs(predicted_loss_diffs))[-num_to_remove:]
+        predicted_loss_diffs = predicted_loss_diffs[indices_to_remove]
+    elif remove_type == 'given':
+        indices_to_remove = [num_to_remove]
+        predicted_loss_diffs = model.get_influence_on_train_loss(
+            [test_idx],
+            np.arange(len(model.data_sets.train.labels)),
+            force_refresh=force_refresh)
+        predicted_loss_diffs = predicted_loss_diffs[indices_to_remove]
+    else:
+        raise ValueError, 'remove_type not well specified'
+    actual_loss_diffs = np.zeros([num_to_remove])
+
+    # Sanity check
+    test_feed_dict = model.fill_feed_dict_with_one_ex(
+        model.data_sets.train,
+        test_idx)
+    test_loss_val, params_val = sess.run([model.loss_no_reg, model.params], feed_dict=test_feed_dict)
+    train_loss_val = sess.run(model.total_loss, feed_dict=model.all_train_feed_dict)
+    # train_loss_val = model.minibatch_mean_eval([model.total_loss], model.data_sets.train)[0]
+
+    model.retrain(num_steps=num_steps, feed_dict=model.all_train_feed_dict)
+    retrained_test_loss_val = sess.run(model.loss_no_reg, feed_dict=test_feed_dict)
+    retrained_train_loss_val = sess.run(model.total_loss, feed_dict=model.all_train_feed_dict)
+    # retrained_train_loss_val = model.minibatch_mean_eval([model.total_loss], model.data_sets.train)[0]
+
+    model.load_checkpoint(iter_to_load, do_checks=False)
+
+    print('Sanity check: what happens if you train the model a bit more?')
+    print('Loss on test idx with original model    : %s' % test_loss_val)
+    print('Loss on test idx with retrained model   : %s' % retrained_test_loss_val)
+    print('Difference in test loss after retraining     : %s' % (retrained_test_loss_val - test_loss_val))
+    print('===')
+    print('Total loss on training set with original model    : %s' % train_loss_val)
+    print('Total loss on training with retrained model   : %s' % retrained_train_loss_val)
+    print('Difference in train loss after retraining     : %s' % (retrained_train_loss_val - train_loss_val))
+
+    print('These differences should be close to 0.\n')
+
+    # Retraining experiment
+
+    for counter, idx_to_remove in enumerate(indices_to_remove):
+        print("=== #%s ===" % counter)
+        print('Retraining without train_idx %s (label %s):' % (
+        idx_to_remove, model.data_sets.train.labels[idx_to_remove]))
+
+        train_feed_dict = model.fill_feed_dict_with_all_but_one_ex(model.data_sets.train, idx_to_remove)
+        model.retrain(num_steps=num_steps, feed_dict=train_feed_dict)
+        retrained_test_loss_val, retrained_params_val = sess.run([model.loss_no_reg, model.params],
+                                                                 feed_dict=test_feed_dict)
+        actual_loss_diffs[counter] = retrained_test_loss_val - test_loss_val
+
+        print('Diff in params: %s' % np.linalg.norm(np.concatenate(params_val) - np.concatenate(retrained_params_val)))
+        print('Loss on test idx with original model    : %s' % test_loss_val)
+        print('Loss on test idx with retrained model   : %s' % retrained_test_loss_val)
+        print('Difference in loss after retraining     : %s' % actual_loss_diffs[counter])
+        print('Predicted difference in loss (influence): %s' % predicted_loss_diffs[counter])
+
+        # Restore params
+        model.load_checkpoint(iter_to_load, do_checks=False)
+
+    np.savez(
+        'output/%s_loss_diffs' % model.model_name,
+        actual_loss_diffs=actual_loss_diffs,
         predicted_loss_diffs=predicted_loss_diffs)
 
     print('Correlation is %s' % pearsonr(actual_loss_diffs, predicted_loss_diffs)[0])

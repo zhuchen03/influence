@@ -75,6 +75,7 @@ def load_animals(num_train_ex_per_class=300,
     num_train_examples = num_train_ex_per_class * num_classes
     num_test_examples = num_test_ex_per_class * num_classes
     num_valid_examples = num_valid_ex_per_class * num_classes
+    #print(num_train_examples)
 
     if os.path.exists(data_filename):
         print('Loading animals from disk...')
@@ -109,9 +110,11 @@ def load_animals(num_train_ex_per_class=300,
             # For some reason, a lot of numbers are skipped.
             i = 0
             num_filled = 0
-            while num_filled < num_train_ex_per_class:        
+            while num_filled < num_train_ex_per_class:
+		#print(num_filled)        
                 img_path = os.path.join(BASE_DIR, '%s/%s_%s.JPEG' % (class_string, class_string, i))
-                print(img_path)
+                if (i % 1000000 == 0):
+			print(img_path)
                 if os.path.exists(img_path):
                     fill(X_train, Y_train, num_filled + (num_train_ex_per_class * class_idx), class_idx, img_path, img_side)
                     num_filled += 1

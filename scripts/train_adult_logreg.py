@@ -14,14 +14,38 @@ import influence.experiments as experiments
 
 from load_mnist import load_mnist, load_small_mnist
 
+from influence.dataset import DataSet
+from tensorflow.contrib.learn.python.learn.datasets import base
+
+def load_adult_dataset():
+
+    train_set = np.load('/scratch0/GoGradients/data/adult/train.npy')
+    test_set = np.load('/scratch0/GoGradients/data/adult/test.npy')
+
+    X_train, y_train = train_set[:,:-1], (train_set[:,-1]+1)/2
+    X_test, y_test = test_set[:,:-1], (test_set[:,-1]+1)/2 #.reshape(-1,1)
+
+    train = DataSet(X_train, y_train)
+    test = DataSet(X_test, y_test)
+
+    return base.Datasets(train=train, validation=test, test=test)
 
 
-data_sets = load_mnist('data')
-# print(data_sets[0])
 
-num_classes = 10
+# data_sets = load_mnist('data')
+data_sets = load_adult_dataset()
+print(data_sets.train.x[0])
+
+
+num_classes = 1
 
 input_dim = data_sets.train.x.shape[1]
+len1 = data_sets.train.x.shape[0]
+print(input_dim)
+print(len1)
+
+
+print('+++++++++DONE++++++')
 weight_decay = 0.01
 batch_size = 1400
 initial_learning_rate = 0.001 

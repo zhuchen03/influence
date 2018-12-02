@@ -236,6 +236,17 @@ class SmoothHinge(GenericNeuralNet):
             print('After training with CG: ')
             self.print_model_eval()
 
+    def set_params_from_npy(self, weight_dir, bias_dir):
+        weight = np.load(weight_dir).reshape(-1)
+        bias = np.load(bias_dir).reshape(-1)
+        weight_cat = np.concatenate([weight, bias], axis=0)
+
+        params_feed_dict = {}
+        params_feed_dict[self.W_placeholder] = weight_cat
+        self.sess.run(self.set_params_op, feed_dict=params_feed_dict)
+
+        print("Validating the model loaded from {}, {}".format(weight_dir, bias_dir))
+        self.print_model_eval()
 
     def train_with_svm(self, feed_dict, save_checkpoints=True, verbose=True):
 

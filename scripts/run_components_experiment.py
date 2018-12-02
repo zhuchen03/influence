@@ -18,7 +18,7 @@ from influence.dataset import DataSet
 from influence.image_utils import plot_flat_bwimage, plot_flat_colorimage, plot_flat_colorgrad
 
 
-
+print('Loading Data from MNIST')
 data_sets = load_mnist('data')
 
 pos_class = 1
@@ -52,6 +52,7 @@ num_params = 784
 
 tf.reset_default_graph()
 
+print("from binaryLogReg")
 tf_model = BinaryLogisticRegressionWithLBFGS(
     input_dim=input_dim,
     weight_decay=weight_decay,
@@ -67,29 +68,31 @@ tf_model = BinaryLogisticRegressionWithLBFGS(
     log_dir='log',
     model_name='mnist-17_logreg')
 
+print('Model will now train')
 tf_model.train()
 
 
 test_idx = 30
 num_train = len(tf_model.data_sets.train.labels)
+print('-----------Influence:')
 
 influences = tf_model.get_influence_on_test_loss(
     [test_idx], 
     np.arange(len(tf_model.data_sets.train.labels)),
     force_refresh=True) * num_train
-
+print('-----------Influence_without_train_error:')
 influences_without_train_error = tf_model.get_influence_on_test_loss(
     [test_idx], 
     np.arange(len(tf_model.data_sets.train.labels)),
     force_refresh=False,
     ignore_training_error=True) * num_train
-
+print('-----------Influence_without_hessian:')
 influences_without_hessian = tf_model.get_influence_on_test_loss(
     [test_idx], 
     np.arange(len(tf_model.data_sets.train.labels)),
     force_refresh=False,
     ignore_hessian=True) * num_train
-
+print('-----------Influence without both:')
 influences_without_both = tf_model.get_influence_on_test_loss(
     [test_idx], 
     np.arange(len(tf_model.data_sets.train.labels)),
