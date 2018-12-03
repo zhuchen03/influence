@@ -30,24 +30,41 @@ import sys
 import pdb
 import pickle
 
-def load_adult_dataset():
 
-    train_set = np.load('/scratch0/GoGradients/data/adult/train_transform_withlabel.npy')
-    test_set = np.load('/scratch0/GoGradients/data/adult/test_transform_withlabel.npy')
+def load_mnist(data_type='train', binary=True, class_inds = [1,7]):
+    '''
+    load_mnist('train') for training data
+    load_mnist('test') for testing data
+    '''
+    MNIST_path = '/scratch0/GoGradients/data/MNIST'
+    if binary:
+        assert len(class_inds) == 2
+    X = np.load(os.path.join(MNIST_path, "{}Images.npy".format(data_type)))
+    Y = np.load(os.path.join(MNIST_path, "{}Labels.npy".format(data_type)))
+    if len(Y.shape) > 1:
+        Y = np.argmax(Y, axis=1)
+    N, C, W, H = X.shape
+    X = X.reshape(N, C*W*H)/255.
+    mask = [Y[i] in class_inds for i in range(N)]
+    X = X[mask, ...]
+    Y = Y[mask]
+    if binary:
+        for i in range(len(Y)):
+            if Y[i] == class_inds[0]:
+                Y[i] = 0
+            else:
+                Y[i] = 1
+    return X, Y.reshape(-1)
 
-    X_train, y_train = train_set[:,:-1], (train_set[:,-1]+1)/2
-    X_test, y_test = test_set[:,:-1], (test_set[:,-1]+1)/2 #.reshape(-1,1)
+def get_mnist_dset(class_inds=[1,7]):
+
+    X_train, y_train = load_mnist('train', class_inds=class_inds)
+    X_test, y_test = load_mnist('test', class_inds=class_inds)
 
     train = DataSet(X_train, y_train)
     test = DataSet(X_test, y_test)
 
     return base.Datasets(train=train, validation=test, test=test)
-
-def get_dist(weights):
-    # each row of pts represents a data
-    pts = np.load('/scratch0/GoGradients/data/adult/train_transform_withlabel.npy')[:,:-1]
-    x = np.abs(np.sum(pts * weights.reshape(-1)[:-1].reshape(1, -1), 1)+weights[-1])
-    return x
 
 def get_wrong_flags(model, data, label):
     logits = model.sess.run(model.logits, feed_dict=model.all_train_feed_dict)
@@ -58,18 +75,18 @@ def plot_infuence(gt, pred, train_sample_idx, res_dir):
     plt.figure()
     plt.plot(gt, pred, 'b.')
     plt.title("Influence of sample {} on subset".format(train_sample_idx))
-    plt.savefig(os.path.join(res_dir, "adult_trainsample{}_influence.png".format(train_sample_idx)))
+    plt.savefig(os.path.join(res_dir, "trainsample{}_influence.png".format(train_sample_idx)))
 
-data_sets = load_adult_dataset()
+class_inds = [1,7]
+data_sets = get_mnist_dset(class_inds)
 num_train = data_sets.train._x.shape[0]
 
-svm_weight_dir, svm_bias_dir = '/scratch0/GoGradients/code/svm_figures/svm_weight.npy', '/scratch0/GoGradients/code/svm_figures/svm_bias.npy'
-res_dir = './LR_influence/adult'
+res_dir = './LR_influence/mnist'
 if not os.path.exists(res_dir):
     os.makedirs(res_dir)
 
 num_classes = 2
-input_dim = 20
+input_dim = 784
 # weight_decay = 0.5 / data_sets.train._x.shape[0]
 weight_decay = 1e-4
 use_bias = True
@@ -100,13 +117,13 @@ model = BinaryLogisticRegressionWithLBFGS(
     mini_batch=False,
     train_dir='output',
     log_dir='log',
-    model_name='adult_logreg_chen')
+    model_name='mnist_logreg_chen')
 
 model.train()
 # model.load_checkpoint(iter_to_load=0)
 model.saver.save(model.sess, model.checkpoint_file, global_step=0)
 
-train_idx = np.load('/scratch0/GoGradients/code/svm_figures/train_most_confusing_idxes_C1.npy')[:30]
+train_idx = np.load('/scratch0/GoGradients/code/svm_figures/mnist_1_7/train_most_confusing_idxes_C1.npy')[:30]
 train_idx = np.concatenate([train_idx, np.random.randint(0, len(data_sets.train.labels), size=(30,))])
 
 test_idx_list = np.random.randint(0, data_sets.train._x.shape[0], 100)
@@ -139,7 +156,7 @@ for remove_idx in train_idx:
 
 plt.figure()
 plt.plot([i for i in range(len(train_idx))], total_inf_list)
-plt.savefig(os.path.join(res_dir, "adult_totalinfluence.png"))
+plt.savefig(os.path.join(res_dir, "mnist_totalinfluence.png"))
 pickle.dump({"remove_idxes": train_idx, "total influences": total_inf_list},
             open(os.path.join(res_dir, 'influence_totals.pkl'), 'w'),
                 pickle.HIGHEST_PROTOCOL)
