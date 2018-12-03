@@ -104,7 +104,8 @@ class GenericNeuralNet(object):
             os.makedirs(self.train_dir)
 
         # Initialize session
-        config = tf.ConfigProto()        
+        config = tf.ConfigProto()
+        config.gpu_options.allow_growth = True
         self.sess = tf.Session(config=config)
         K.set_session(self.sess)
                 

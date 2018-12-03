@@ -2,7 +2,11 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 from __future__ import unicode_literals  
-   
+
+import os
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+
 import numpy as np
 import pandas as pd
 import tensorflow as tf
@@ -20,10 +24,11 @@ from tensorflow.contrib.learn.python.learn.datasets import base
 import matplotlib
 matplotlib.use('agg')
 from matplotlib import pyplot as plt
+import sys
+
 
 import pdb
 import pickle
-import os
 
 def load_adult_dataset():
 
@@ -181,7 +186,7 @@ for counter, temp in enumerate(temps):
                     model,
                     test_idx,
                     iter_to_load=0,
-                    force_refresh=True,
+                    force_refresh=False,
                     num_to_remove=remove_idx,  # data_sets.train.x.shape[0],
                     remove_type='random',
                     random_seed=0)

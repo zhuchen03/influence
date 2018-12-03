@@ -1,7 +1,9 @@
 from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
-from __future__ import unicode_literals  
+from __future__ import unicode_literals
+import matplotlib
+matplotlib.use('agg')
    
 import numpy as np
 import pandas as pd
@@ -17,13 +19,14 @@ from influence.smooth_hinge import SmoothHinge
 from influence.binaryLogisticRegressionWithLBFGS import BinaryLogisticRegressionWithLBFGS
 
 from tensorflow.contrib.learn.python.learn.datasets import base
-import matplotlib
-matplotlib.use('agg')
 from matplotlib import pyplot as plt
 
 import pdb
 import pickle
 import os
+
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 
 def get_dist(weights, pts):
@@ -38,7 +41,7 @@ def get_wrong_flags(model, data, label):
 
 def plot_infuence(gt, pred, train_sample_idx):
     plt.figure()
-    plt.plot(gt, pred)
+    plt.plot(gt, pred, 'b.')
     plt.title("Influence of sample {} on subset".format(train_sample_idx))
     plt.savefig("figures/mnist_trainsample{}_influence.png".format(train_sample_idx))
 
@@ -91,7 +94,7 @@ if not os.path.exists(res_dir):
 num_classes = 2
 input_dim = data_sets.train._x.shape[1]
 # need to make it equivalent to setting C = 1, since it takes mean when computing the loss
-weight_decay = 1. / data_sets.train._x.shape[0]
+weight_decay = 0.5 / data_sets.train._x.shape[0]
 use_bias = True
 batch_size = 100
 initial_learning_rate = 1e-3
