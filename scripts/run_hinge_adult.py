@@ -205,8 +205,11 @@ for counter, temp in enumerate(temps):
 
     plt.figure()
     plt.plot([i for i in range(len(train_idx))], total_inf_list)
-    plt.savefig("adult_temp{}_totalinfluence.png".format(temp))
-    pickle.dump({"remove_idxes":train_idx, "total influences":total_inf_list})
+    plt.savefig(os.path.join("adult_temp{}_totalinfluence.png".format(temp)))
+    pickle.dump({"remove_idxes":train_idx, "total influences":total_inf_list},
+                open(os.path.join(res_dir, 'influence_totals.pkl'), 'w'),
+                pickle.HIGHEST_PROTOCOL
+                )
     # cur_params, cur_margins = model.sess.run([model.params, model.margin], feed_dict=model.all_train_feed_dict)
     # cur_influences = model.get_influence_on_train_loss(
     #     test_indices=[test_idx],

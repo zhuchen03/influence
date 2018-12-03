@@ -120,7 +120,7 @@ for remove_idx in train_idx:
             model,
             test_idx,
             iter_to_load=0,
-            force_refresh=False,
+            force_refresh=True,
             num_to_remove=remove_idx,  # data_sets.train.x.shape[0],
             remove_type='random',
             random_seed=0)
