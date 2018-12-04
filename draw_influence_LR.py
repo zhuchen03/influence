@@ -106,7 +106,7 @@ plotit(hinge_list[len(train_idx):], influence_list[len(train_idx):],
        hinge_list[:len(train_idx)], influence_list[:len(train_idx)],
        minmax_hinge_list, minmax_influence_list,
        minmin_hinge_list, minmin_influence_list,
-       xlabel='HingeLoss', ylabel='InfluenceFunction',
+       xlabel='-Margin', ylabel='InfluenceFunction',
        res_dir=out_dir)
 
 # plt.figure()
@@ -131,7 +131,7 @@ plotit(hinge_list[len(train_idx):], gt_list[len(train_idx):],
        hinge_list[:len(train_idx)], gt_list[:len(train_idx)],
        minmax_hinge_list, minmax_gt_list,
        minmin_hinge_list, minmin_gt_list,
-       xlabel='Margin', ylabel='GroundTruth',
+       xlabel='-Margin', ylabel='GroundTruth',
        res_dir=out_dir)
 
 plotit(minmax_p[random_idxes], gt_list[len(train_idx):],
@@ -152,5 +152,5 @@ plotit(hinge_list[len(train_idx):], minmax_p[random_idxes],
        hinge_list[:len(train_idx)], minmax_p[train_idx],
        minmax_hinge_list, minmax_p[minmax_idx],
        minmin_hinge_list, minmax_p[minmin_idx],
-       xlabel='HingeLoss', ylabel='p_{minmax}',
+       xlabel='-Margin', ylabel='p_{minmax}',
        res_dir=out_dir, yscale='log')
