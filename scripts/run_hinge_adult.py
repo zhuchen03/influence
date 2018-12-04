@@ -174,6 +174,8 @@ for counter, temp in enumerate(temps):
     for remove_idx in train_idx:
         actual_loss_diff_list = []
         influence = []
+        if os.path.exists(os.path.join(res_dir, 'influence_{}_temp{}.pkl'.format(remove_idx, temp))):
+            continue
         for test_idx in test_idx_list:
             if temp == 0:
                 actual_loss_diff, predicted_loss_diff, indices_to_remove = experiments.test_retraining_on_train(

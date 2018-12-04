@@ -154,3 +154,10 @@ plotit(hinge_list[len(train_idx):], minmax_p[random_idxes],
        minmin_hinge_list, minmax_p[minmin_idx],
        xlabel='-Margin', ylabel='p_{minmax}',
        res_dir=out_dir, yscale='log')
+
+plotit(hinge_list[len(train_idx):], minmin_p[random_idxes],
+       hinge_list[:len(train_idx)], minmin_p[train_idx],
+       minmax_hinge_list, minmin_p[minmax_idx],
+       minmin_hinge_list, minmin_p[minmin_idx],
+       xlabel='-Margin', ylabel='p_{minmin}',
+       res_dir=out_dir, yscale='log')
