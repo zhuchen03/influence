@@ -120,8 +120,8 @@ res_dir = './svm_influence/adult'
 if not os.path.exists(res_dir):
     os.makedirs(res_dir)
 train_idx = np.load('/scratch0/GoGradients/code/svm_figures/train_most_confusing_idxes_C1.npy')[:30]
-minmax_idx = np.load('/scratch0/GoGradients/code/exp/ploting/exp1/max.npy').argsort()[::-1][:30]
-minmin_idx = np.load('/scratch0/GoGradients/code/exp/ploting/exp1/min.npy').argsort()[::-1][:30]
+minmax_idx = np.load('/scratch0/GoGradients/code/exp/ploting/exp2/max.npy').argsort()[::-1][:30]
+minmin_idx = np.load('/scratch0/GoGradients/code/exp/ploting/exp2/min.npy').argsort()[::-1][:30]
 train_idx = np.concatenate([train_idx, minmax_idx, minmin_idx])
 train_idx = np.concatenate([train_idx, np.random.randint(0, len(data_sets.train.labels), size=(100,))])
 
