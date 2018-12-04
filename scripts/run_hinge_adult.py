@@ -5,7 +5,7 @@ from __future__ import unicode_literals
 
 import os
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"  # see issue #152
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 import numpy as np
 import pandas as pd
@@ -64,9 +64,6 @@ data_sets = load_adult_dataset()
 num_train = data_sets.train._x.shape[0]
 
 svm_weight_dir, svm_bias_dir = '/scratch0/GoGradients/code/svm_figures/svm_weight.npy', '/scratch0/GoGradients/code/svm_figures/svm_bias.npy'
-res_dir = './svm_influence'
-if not os.path.exists(res_dir):
-    os.makedirs(res_dir)
 
 num_classes = 2
 input_dim = 20
@@ -79,7 +76,7 @@ keep_probs = None
 decay_epochs = [1000, 10000]
 max_lbfgs_iter = 1000
 
-temps = [5e-4]#, 0.00001, 0.001, 0.1]
+temps = [0] #[5e-4]#, 0.00001, 0.001, 0.1]
 num_temps = len(temps)
 
 num_params = input_dim + 1
@@ -119,7 +116,13 @@ model_margins = model.sess.run(model.margin, feed_dict=model.all_test_feed_dict)
 # train_idx = np.argsort(model_margins)[:10]
 # print("Margins: {}, {}".format(train_idx, model_margins[train_idx]))
 # pdb.set_trace()
-train_idx = np.load('/scratch0/GoGradients/code/svm_figures/train_most_confusing_idxes_C1.npy')
+res_dir = './svm_influence/adult'
+if not os.path.exists(res_dir):
+    os.makedirs(res_dir)
+train_idx = np.load('/scratch0/GoGradients/code/svm_figures/train_most_confusing_idxes_C1.npy')[:30]
+minmax_idx = np.load('/scratch0/GoGradients/code/exp/ploting/exp1/max.npy').argsort()[::-1][:30]
+minmin_idx = np.load('/scratch0/GoGradients/code/exp/ploting/exp1/min.npy').argsort()[::-1][:30]
+train_idx = np.concatenate([train_idx, minmax_idx, minmin_idx])
 train_idx = np.concatenate([train_idx, np.random.randint(0, len(data_sets.train.labels), size=(100,))])
 
 
@@ -205,7 +208,7 @@ for counter, temp in enumerate(temps):
 
     plt.figure()
     plt.plot([i for i in range(len(train_idx))], total_inf_list)
-    plt.savefig(os.path.join("adult_temp{}_totalinfluence.png".format(temp)))
+    plt.savefig(os.path.join(res_dir, "adult_temp{}_totalinfluence.png".format(temp)))
     pickle.dump({"remove_idxes":train_idx, "total influences":total_inf_list},
                 open(os.path.join(res_dir, 'influence_totals.pkl'), 'w'),
                 pickle.HIGHEST_PROTOCOL
